@@ -1,0 +1,108 @@
+---
+- name: easyprivacy
+  url: http://v.firebog.net/hosts/Easyprivacy.txt
+  description: Tracking
+
+- name: steven_blank
+  url: https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/fakenews-gambling/hosts
+  description: 'Tracking'
+
+- name: winhelp
+  url: http://winhelp2002.mvps.org/hosts.txt
+  description: 'Tracking'
+
+- name: someonewhocares
+  url: http://someonewhocares.org/hosts/zero/hosts
+  description: 'Tracking'
+
+- name: cameleon
+  url: http://sysctl.org/cameleon/hosts
+  description: 'Tracking'
+
+- name: adguard
+  url: http://v.firebog.net/hosts/AdguardDNS.txt
+  description: 'Tracking'
+
+- name: easylist
+  url: http://v.firebog.net/hosts/Easylist.txt
+  description: 'Tracking'
+
+- name: adaway
+  url: https://adaway.org/hosts.txt
+  description: 'Tracking'
+
+- name: ad_servers
+  url: https://hosts-file.net/ad_servers.txt
+  description: 'Tracking'
+
+- name: firestorrrm
+  url: https://raw.githubusercontent.com/Firestorrrm/Minimal-Hosts-Blocker/master/iosadlist.txt
+  description: 'Tracking'
+
+- name: disconnect
+  url: https://s3.amazonaws.com/lists.disconnect.me/simple_ad.txt
+  description: 'Tracking'
+
+- name: airelle
+  url: http://v.firebog.net/hosts/Airelle-trc.txt
+  description: 'Tracking'
+
+- name: shallamal
+  url: http://v.firebog.net/hosts/Shalla-mal.txt
+  description: 'Tracking'
+
+- name: mandiant
+  url: https://bitbucket.org/ethanr/dns-blacklists/raw/8575c9f96e5b4a1308f2f12394abd86d0927a4a0/bad_lists/Mandiant_APT1_Report_Appendix_D.txt
+  description: 'Tracking'
+
+- name: notracking
+  url: https://raw.githubusercontent.com/notracking/hosts-blocklists/master/hostnames.txt
+  description: 'Tracking'
+
+- name: nocoin
+  url: https://raw.githubusercontent.com/hoshsadiq/adblock-nocoin-list/master/hosts.txt
+  description: 'Crypto'
+
+- name: emd
+  url: https://hosts-file.net/emd.txt
+  description: 'Malicious'
+
+- name: exp
+  url: https://hosts-file.net/exp.txt
+  description: 'Malicious'
+
+- name: grm
+  url: https://hosts-file.net/grm.txt
+  description: 'Malicious'
+
+- name: fsa
+  url: https://hosts-file.net/fsa.txt
+  description: 'Malicious'
+
+- name: windows10
+  url: https://raw.githubusercontent.com/crazy-max/WindowsSpyBlocker/master/data/hosts/win10/spy.txt
+  description: 'Telemetry'
+
+- name: zeustracker
+  url: https://zeustracker.abuse.ch/blocklist.php?download=domainblocklist
+  description: 'Malicious'
+
+- name: immortal
+  url: https://mirror.cedia.org.ec/malwaredomains/immortal_domains.txt
+  description: 'Malicious'
+
+- name: ransomwaretracker
+  url: https://ransomwaretracker.abuse.ch/downloads/RW_DOMBL.txt
+  description: 'Malicious'
+
+- name: quidsup
+  url: https://raw.githubusercontent.com/quidsup/notrack/master/trackers.txt
+  description: 'Malicious'
+
+- name: disconnect_malvertising
+  url:  https://s3.amazonaws.com/lists.disconnect.me/simple_malvertising.txt
+  description: 'Malicious'
+
+- name: malwaredomainlist
+  url: https://www.malwaredomainlist.com/hostslist/hosts.txt
+  description: 'Malicious'
