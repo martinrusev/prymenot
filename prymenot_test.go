@@ -10,12 +10,12 @@ func TestParseLine(t *testing.T) {
 		source string
 		want   string
 	}{
-		{"127.0.0.1 005.free-counter.co.uk", "005.free-counter.co.uk"},  // separated by space
-		{"127.0.0.1\t005.free-counter.co.uk", "005.free-counter.co.uk"}, // separated by tab
+		{"127.0.0.1 005.space-counter.co.uk", "005.space-counter.co.uk"}, // separated by space
+		{"127.0.0.1\t005.tab-counter.co.uk", "005.tab-counter.co.uk"},    // separated by tab
 		{"0.0.0.0 0000mps.webpreview.dsl.net", "0000mps.webpreview.dsl.net"},
 		{"0.0.0.0 http://ads1.msn.com", "ads1.msn.com"}, // cleanup https://
 		{"beatyhousesupporte.su", "beatyhousesupporte.su"},
-		{"127.0.0.1	localhost", ""}, // ignore localhost
+		{"127.0.0.1\tlocalhost", ""},             // ignore localhost
 		{"#0.0.0.0 anetno.tradedoubler.com", ""}, // ignore commented entries
 	}
 	for _, tc := range testCases {

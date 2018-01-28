@@ -51,15 +51,19 @@ func downloadFile(filepath string, url string) (err error) {
 	return nil
 }
 
-func syncSources() (err error) {
+// Function for downloading hosts files
+// :param sources: a list of structs [{"url": "http://someonewhocares.org/hosts/zero/hosts", 'name': 'someonewhocarse'}]
+// :param output_path: an output directory. absolute path
+// Usage::
+//   >>> syncSources([{"url": 'http://domain.com/ads_hosts', 'name': 'domain_ads'}])
+//
+func syncSources(sources Sources, output_path string) (err error) {
 	filename, _ := filepath.Abs("sources.yml")
 	yamlFile, err := ioutil.ReadFile(filename)
 
 	if err != nil {
 		log.Fatal("Can not open sources file at : %s - %s", filename, err)
 	}
-
-	var sources Sources
 
 	err = yaml.Unmarshal(yamlFile, &sources.List)
 	if err != nil {
@@ -79,26 +83,35 @@ func syncSources() (err error) {
 
 }
 
+// Function for parsing individual /etc/hosts lines
+// :param line: /etc/hosts line
+// Usage::
+//   >>> host = parseLine(line='127.0.0.1    005.free-counter.co.uk')
+//
 func parseLine(line string) (validURL string, err error) {
+	var lineSplice []string
+
 	cleanLine := strings.TrimSpace(strings.ToLower(line))
 
 	// Split by tab first
 	splitByTab := strings.Split(cleanLine, "\t")
 
 	if len(splitByTab) == 1 {
-		splitbySpace := strings.Fields(cleanLine)
+		lineSplice = strings.Fields(cleanLine)
+	} else {
+		lineSplice = splitByTab
+	}
 
-		for _, el := range splitbySpace {
+	for _, el := range lineSplice {
+		cleanHttp := strings.Replace(el, "http://", "", -1)
+		cleanElement := strings.TrimSpace(cleanHttp)
 
-			cleanElement := strings.TrimSpace(el)
+		isElementURL := govalidator.IsURL(cleanElement)
+		isElementIP := govalidator.IsIP(cleanElement)
+		startsWithHash := strings.HasPrefix(cleanLine, "#")
 
-			isElementURL := govalidator.IsURL(cleanElement)
-			isElementIP := govalidator.IsIP(cleanElement)
-			startsWithHash := strings.HasPrefix(cleanElement, "#")
-
-			if isElementURL == true && isElementIP == false && startsWithHash == false {
-				validURL = cleanElement
-			}
+		if isElementURL == true && isElementIP == false && startsWithHash == false {
+			validURL = cleanElement
 		}
 	}
 
@@ -107,6 +120,12 @@ func parseLine(line string) (validURL string, err error) {
 	return validURL, nil
 }
 
+// Function for parsing /etc/hosts files
+
+// :param path: non relative path to the hosts file
+// Usage::
+//   >>> hosts_list = parseFile(path='/etc/hosts')
+//
 func parseFile(file string) (result []string, err error) {
 
 	linesInFile := 0
@@ -139,6 +158,42 @@ func parseFile(file string) (result []string, err error) {
 	log.Infof("Total lines found in %s: %d | Lines Parsed:%d\n", file, linesInFile, linesParsed)
 
 	return result, nil
+}
+
+// Function for parsing folders with multiple /etc/hosts files
+
+// :param path: non relative path to the hosts file
+// Usage::
+//   >>> hosts_list = parseFolder(path='/etc/hosts')
+//
+func parseFolder(path string) (err error) {
+
+	return nil
+}
+
+// Function for removing dead domains from a list
+// :param domains: a list of domains
+// Usage::
+//   >>> workingDomains = cleanupDeadDomains(domains=['005.free-counter.co.uk', 'warning-0auto7.stream'])
+//
+func cleanupDeadDomains(domains []string) (result []string, err error) {
+
+	return result, nil
+}
+
+// An utility function that exports a domain list to different formats.
+//    :param domains: list with hosts(domains)
+// 	  :param format: export format. possible options: unbound, json, yaml, hosts
+//    :param path: absolute path to the desired location for the generated file
+//    :param ip_address: IP Adress to be used in the config, defaults to 0.0.0.0
+//    Usage::
+//      >>> exportToFile(['advertising.microsoft.com', 'ad.doubleclick.net'], 'yaml', '/home/user/hosts')
+//
+func exportToFile(domains []string, format string, path string, ip_address string) (err error) {
+	if len(ip_address) == 0 {
+		ip_address = "0.0.0.0"
+	}
+	return nil
 }
 
 func main() {
