@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/asaskevich/govalidator"
@@ -24,6 +25,27 @@ type Source struct {
 	Name        string `yaml:"name"`
 	Url         string `yaml:"url"`
 	Description string `yaml:"description,omitempty"`
+}
+
+// Source: https://www.dotnetperls.com/duplicates-go
+// :param elements := []string{"cat", "dog", "cat", "bird"}
+// Usage::
+//   >>> unique = removeDuplicatesUnordered(elements)
+//
+func removeDuplicatesUnordered(elements []string) []string {
+	encountered := map[string]bool{}
+
+	// Create a map of all unique elements.
+	for v := range elements {
+		encountered[elements[v]] = true
+	}
+
+	// Place all keys from the map into a slice.
+	result := []string{}
+	for key := range encountered {
+		result = append(result, key)
+	}
+	return result
 }
 
 func downloadFile(filepath string, url string) (err error) {
@@ -115,7 +137,7 @@ func parseLine(line string) (validURL string, err error) {
 		}
 	}
 
-	log.Infof("Extracted URL:%s from line: %s\n", validURL, line)
+	log.Debug("Extracted URL:%s from line: %s\n", validURL, line)
 
 	return validURL, nil
 }
@@ -124,17 +146,14 @@ func parseLine(line string) (validURL string, err error) {
 
 // :param path: non relative path to the hosts file
 // Usage::
-//   >>> hosts_list = parseFile(path='/etc/hosts')
+//   >>> hosts_list = parseFile('/etc/hosts')
 //
-func parseFile(file string) (result []string, err error) {
+func parseFile(pathToFile string) (results []string, err error) {
 
 	linesInFile := 0
 	linesParsed := 0
 
-	fileToParse := filepath.Join(path, "sources", file)
-	log.Infof("Parsing: %s\n", fileToParse)
-
-	openFile, err := os.Open(fileToParse)
+	openFile, err := os.Open(pathToFile)
 	if err != nil {
 		log.Fatal("Can not open file: %s - %s", openFile, err)
 	}
@@ -146,7 +165,7 @@ func parseFile(file string) (result []string, err error) {
 		line := scanner.Text()
 		parsedLine, _ := parseLine(line)
 		if len(parsedLine) > 0 {
-			result = append(result, parsedLine)
+			results = append(results, parsedLine)
 			linesParsed = linesParsed + 1
 		}
 	}
@@ -155,20 +174,41 @@ func parseFile(file string) (result []string, err error) {
 		log.Warn("Can not process file: %s - %s", openFile, err)
 	}
 
-	log.Infof("Total lines found in %s: %d | Lines Parsed:%d\n", file, linesInFile, linesParsed)
+	log.Debug("Total lines found in %s: %d | Lines Parsed: %d\n", pathToFile, linesInFile, linesParsed)
 
-	return result, nil
+	return results, nil
 }
 
 // Function for parsing folders with multiple /etc/hosts files
-
-// :param path: non relative path to the hosts file
+// :param folderPath: absolute path to a directory with multiple hosts files
 // Usage::
-//   >>> hosts_list = parseFolder(path='/etc/hosts')
+//   >>> hosts_list = parseFolder('/home/hosts')
 //
-func parseFolder(path string) (err error) {
+func parseFolder(folderPath string) (results []string, err error) {
+	log.Infof("Parsing directory %s", folderPath)
 
-	return nil
+	files, err := ioutil.ReadDir(folderPath)
+	if err != nil {
+		log.Error("Can not process directory: %s - %s", folderPath, err)
+	}
+
+	for _, file := range files {
+		if !file.IsDir() {
+			pathToFile := filepath.Join(folderPath, file.Name())
+			hosts, _ := parseFile(pathToFile)
+			results = append(results, hosts...)
+
+		}
+
+	}
+
+	uniqueHosts := removeDuplicatesUnordered(results)
+	log.Infof("Total Hosts parsed: %d", len(results))
+	log.Infof("Unique Hosts: %d", len(uniqueHosts))
+
+	results = uniqueHosts
+
+	return results, nil
 }
 
 // Function for removing dead domains from a list
@@ -198,4 +238,11 @@ func exportToFile(domains []string, format string, path string, ip_address strin
 
 func main() {
 
+	start := time.Now()
+
+	absolutePathToFolder := filepath.Join(path, "sources")
+	hosts, _ := parseFolder(absolutePathToFolder)
+	log.Debug(hosts)
+	elapsed := time.Since(start)
+	log.Printf("Parsing hosts files took %s", elapsed)
 }
