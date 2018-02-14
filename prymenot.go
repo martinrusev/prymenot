@@ -219,8 +219,8 @@ type HTTPResponse struct {
 	URL        string
 }
 
-func getUrlStatusCode(URL string) (result HTTPResponse, err error) {
-
+func getUrlStatusCode(URL string, resultChan chan HTTPResponse, wg *sync.WaitGroup) {
+	result := HTTPResponse{statusCode: 0, URL: URL}
 	u, err := url.Parse(URL)
 	if err != nil {
 		log.Errorf("Invalid URL: %s", err)
@@ -228,23 +228,21 @@ func getUrlStatusCode(URL string) (result HTTPResponse, err error) {
 	if len(u.Scheme) == 0 {
 		u.Scheme = "http"
 	}
-	log.Infof(u.Scheme)
-	result = HTTPResponse{}
-	timeout := time.Duration(15 * time.Second)
+
+	timeout := time.Duration(5 * time.Second)
 	client := http.Client{
 		Timeout: timeout,
 	}
 	response, err := client.Get(u.String())
 
 	if err != nil {
-		return result, err
+		log.Errorf("Error parsing URL: %s", err)
 	}
-
-	defer response.Body.Close()
-
-	result = HTTPResponse{statusCode: response.StatusCode, URL: URL}
-
-	return result, nil
+	if response != nil {
+		result = HTTPResponse{statusCode: response.StatusCode, URL: URL}
+		defer response.Body.Close()
+	}
+	resultChan <- result
 }
 
 // Function for removing dead domains from a list
@@ -261,19 +259,20 @@ func cleanupDeadDomains(domains []string) (result []string, err error) {
 		wg.Add(1)
 
 		go func(url string) {
-			URLStatus, err := getUrlStatusCode(url)
-			if err != nil {
-				log.Errorf("URL not responding: %s", err)
-			}
-
-			resultChan <- URLStatus
-			defer wg.Done()
+			getUrlStatusCode(url, resultChan, &wg)
+			wg.Done()
 		}(url)
 
 	}
 
 	wg.Wait()
 	close(resultChan)
+
+	for r := range resultChan {
+		log.Infof(r.URL)
+	}
+
+	result = []string{"test"}
 
 	return result, nil
 }
@@ -298,9 +297,9 @@ func main() {
 	start := time.Now()
 
 	// absolutePathToFolder := filepath.Join(path, "sources")
-	absolutePathToFile := filepath.Join(path, "sources", "windows10")
+	absolutePathToFile := filepath.Join(path, "sources", "zeustracker")
 	hosts, _ := parseFile(absolutePathToFile)
-	log.Info(hosts)
+	// hosts := []string{"example.org", "golang.org", "google.com"}
 	result, _ := cleanupDeadDomains(hosts)
 
 	log.Debug(result)
