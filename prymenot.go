@@ -5,9 +5,11 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -211,12 +213,67 @@ func parseFolder(folderPath string) (results []string, err error) {
 	return results, nil
 }
 
+// HTTPResponse -XXX
+type HTTPResponse struct {
+	statusCode int
+	URL        string
+}
+
+func getUrlStatusCode(URL string) (result HTTPResponse, err error) {
+
+	u, err := url.Parse(URL)
+	if err != nil {
+		log.Errorf("Invalid URL: %s", err)
+	}
+	if len(u.Scheme) == 0 {
+		u.Scheme = "http"
+	}
+	log.Infof(u.Scheme)
+	result = HTTPResponse{}
+	timeout := time.Duration(15 * time.Second)
+	client := http.Client{
+		Timeout: timeout,
+	}
+	response, err := client.Get(u.String())
+
+	if err != nil {
+		return result, err
+	}
+
+	defer response.Body.Close()
+
+	result = HTTPResponse{statusCode: response.StatusCode, URL: URL}
+
+	return result, nil
+}
+
 // Function for removing dead domains from a list
 // :param domains: a list of domains
 // Usage::
 //   >>> workingDomains = cleanupDeadDomains(domains=['005.free-counter.co.uk', 'warning-0auto7.stream'])
 //
 func cleanupDeadDomains(domains []string) (result []string, err error) {
+
+	resultChan := make(chan HTTPResponse, len(domains))
+	var wg sync.WaitGroup
+
+	for _, url := range domains {
+		wg.Add(1)
+
+		go func(url string) {
+			URLStatus, err := getUrlStatusCode(url)
+			if err != nil {
+				log.Errorf("URL not responding: %s", err)
+			}
+
+			resultChan <- URLStatus
+			defer wg.Done()
+		}(url)
+
+	}
+
+	wg.Wait()
+	close(resultChan)
 
 	return result, nil
 }
@@ -240,9 +297,13 @@ func main() {
 
 	start := time.Now()
 
-	absolutePathToFolder := filepath.Join(path, "sources")
-	hosts, _ := parseFolder(absolutePathToFolder)
-	log.Debug(hosts)
+	// absolutePathToFolder := filepath.Join(path, "sources")
+	absolutePathToFile := filepath.Join(path, "sources", "windows10")
+	hosts, _ := parseFile(absolutePathToFile)
+	log.Info(hosts)
+	result, _ := cleanupDeadDomains(hosts)
+
+	log.Debug(result)
 	elapsed := time.Since(start)
-	log.Printf("Parsing hosts files took %s", elapsed)
+	log.Printf("Time to execute: %s", elapsed)
 }
