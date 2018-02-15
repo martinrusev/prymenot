@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -219,6 +220,30 @@ type HTTPResponse struct {
 	URL        string
 }
 
+// DNSResponse -XXX
+type DNSResponse struct {
+	IpAddresses []string
+	URL         string
+}
+
+func getUrlDNSResponse(URL string, resultChan chan DNSResponse, wg *sync.WaitGroup) {
+	result := DNSResponse{IpAddresses: []string{}, URL: URL}
+	u, err := url.Parse(URL)
+	if err != nil {
+		log.Errorf("Invalid URL: %s", err)
+	}
+
+	ips, err := net.LookupIP(u.String())
+	if err != nil {
+		log.Errorf("Error parsing URL: %s", err)
+	}
+	for _, ip := range ips {
+		result.IpAddresses = append(result.IpAddresses, ip.String())
+	}
+
+	resultChan <- result
+}
+
 func getUrlStatusCode(URL string, resultChan chan HTTPResponse, wg *sync.WaitGroup) {
 	result := HTTPResponse{statusCode: 0, URL: URL}
 	u, err := url.Parse(URL)
@@ -229,7 +254,7 @@ func getUrlStatusCode(URL string, resultChan chan HTTPResponse, wg *sync.WaitGro
 		u.Scheme = "http"
 	}
 
-	timeout := time.Duration(5 * time.Second)
+	timeout := time.Duration(10 * time.Second)
 	client := http.Client{
 		Timeout: timeout,
 	}
@@ -250,7 +275,7 @@ func getUrlStatusCode(URL string, resultChan chan HTTPResponse, wg *sync.WaitGro
 // Usage::
 //   >>> workingDomains = cleanupDeadDomains(domains=['005.free-counter.co.uk', 'warning-0auto7.stream'])
 //
-func cleanupDeadDomains(domains []string) (result []string, err error) {
+func cleanupDeadDomains(domains []string) (result []HTTPResponse, err error) {
 
 	resultChan := make(chan HTTPResponse, len(domains))
 	var wg sync.WaitGroup
@@ -260,7 +285,7 @@ func cleanupDeadDomains(domains []string) (result []string, err error) {
 
 		go func(url string) {
 			getUrlStatusCode(url, resultChan, &wg)
-			wg.Done()
+			defer wg.Done()
 		}(url)
 
 	}
@@ -268,11 +293,45 @@ func cleanupDeadDomains(domains []string) (result []string, err error) {
 	wg.Wait()
 	close(resultChan)
 
+	// resultChan = result
 	for r := range resultChan {
-		log.Infof(r.URL)
+		log.Infof("%s, %v", r.URL, r.statusCode)
 	}
 
-	result = []string{"test"}
+	// result = []string{"test"}
+
+	return result, nil
+}
+
+// Function for removing domains with no DNS records from a list
+// :param domains: a list of domains
+// Usage::
+//   >>> workingDomains = cleanupDomainsNoDNS(domains=['005.free-counter.co.uk', 'warning-0auto7.stream'])
+//
+func cleanupDomainsNoDNS(domains []string) (result []DNSResponse, err error) {
+
+	resultChan := make(chan DNSResponse, len(domains))
+	var wg sync.WaitGroup
+
+	for _, url := range domains {
+		wg.Add(1)
+
+		go func(url string) {
+			getUrlDNSResponse(url, resultChan, &wg)
+			defer wg.Done()
+		}(url)
+
+	}
+
+	wg.Wait()
+	close(resultChan)
+
+	// resultChan = result
+	for r := range resultChan {
+		log.Infof("%s, %d", r.URL, r.IpAddresses)
+	}
+
+	// result = []string{"test"}
 
 	return result, nil
 }
@@ -297,12 +356,24 @@ func main() {
 	start := time.Now()
 
 	// absolutePathToFolder := filepath.Join(path, "sources")
-	absolutePathToFile := filepath.Join(path, "sources", "zeustracker")
-	hosts, _ := parseFile(absolutePathToFile)
-	// hosts := []string{"example.org", "golang.org", "google.com"}
-	result, _ := cleanupDeadDomains(hosts)
+	// absolutePathToFile := filepath.Join(path, "sources", "example")
+	// hosts, _ := parseFile(absolutePathToFile)
+	hosts := []string{}
 
-	log.Debug(result)
+	for i := 1; i <= 100; i++ {
+		hosts = append(hosts, "google.com")
+		hosts = append(hosts, "example.org")
+		hosts = append(hosts, "golang.org")
+		hosts = append(hosts, "yahoo.com")
+	}
+	log.Info(len(hosts))
+	// result, _ := cleanupDeadDomains(hosts)
+
+	// Check DNS
+	dnsCheck, _ := cleanupDomainsNoDNS(hosts)
+	log.Debug(dnsCheck)
+
+	// log.Debug(result)
 	elapsed := time.Since(start)
-	log.Printf("Time to execute: %s", elapsed)
+	log.Printf("Executed in: %s", elapsed)
 }
