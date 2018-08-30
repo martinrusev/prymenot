@@ -13,20 +13,22 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/asaskevich/govalidator"
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
 
-var path = "/home/martin/go/src/github.com/prymenot/prymenot"
+var path = "/home/martin/prymenot"
 
+// Sources  - XXX
 type Sources struct {
 	List []Source
 }
 
+// Source  - XXX
 type Source struct {
 	Name        string `yaml:"name"`
-	Url         string `yaml:"url"`
+	URL         string `yaml:"url"`
 	Description string `yaml:"description,omitempty"`
 }
 
@@ -82,26 +84,32 @@ func downloadFile(filepath string, url string) (err error) {
 // Usage::
 //   >>> syncSources([{"url": 'http://domain.com/ads_hosts', 'name': 'domain_ads'}])
 //
-func syncSources(sources Sources, output_path string) (err error) {
+func syncSources(sources Sources, outputPath string) (err error) {
 	filename, _ := filepath.Abs("sources.yml")
 	yamlFile, err := ioutil.ReadFile(filename)
 
 	if err != nil {
-		log.Fatal("Can not open sources file at : %s - %s", filename, err)
+		log.WithFields(log.Fields{
+			"file":  filename,
+			"Error": err,
+		}).Fatal("Can not process file")
 	}
 
 	err = yaml.Unmarshal(yamlFile, &sources.List)
 	if err != nil {
-		log.Fatal("Can not process YAML in: %s - %s", filename, err)
+		log.WithFields(log.Fields{
+			"file":  filename,
+			"Error": err,
+		}).Fatal("Can not unmarshal YAML file")
 	}
 
 	os.MkdirAll("sources", os.ModePerm)
 
 	for _, element := range sources.List {
-		log.Infof("Processing URL:%s \n", element.Url)
+		log.Infof("Processing URL:%s \n", element.URL)
 
 		outputPath := filepath.Join(path, "sources", element.Name)
-		downloadFile(outputPath, element.Url)
+		downloadFile(outputPath, element.URL)
 	}
 
 	return nil
@@ -128,8 +136,8 @@ func parseLine(line string) (validURL string, err error) {
 	}
 
 	for _, el := range lineSplice {
-		cleanHttp := strings.Replace(el, "http://", "", -1)
-		cleanElement := strings.TrimSpace(cleanHttp)
+		cleanHTTP := strings.Replace(el, "http://", "", -1)
+		cleanElement := strings.TrimSpace(cleanHTTP)
 
 		isElementURL := govalidator.IsURL(cleanElement)
 		isElementIP := govalidator.IsIP(cleanElement)
@@ -140,7 +148,7 @@ func parseLine(line string) (validURL string, err error) {
 		}
 	}
 
-	log.Debug("Extracted URL:%s from line: %s\n", validURL, line)
+	log.Debugf("Extracted URL:%s from line: %s\n", validURL, line)
 
 	return validURL, nil
 }
@@ -158,7 +166,10 @@ func parseFile(pathToFile string) (results []string, err error) {
 
 	openFile, err := os.Open(pathToFile)
 	if err != nil {
-		log.Fatal("Can not open file: %s - %s", openFile, err)
+		log.WithFields(log.Fields{
+			"file":  openFile,
+			"Error": err,
+		}).Fatal("Can not process file")
 	}
 	defer openFile.Close()
 
@@ -174,10 +185,17 @@ func parseFile(pathToFile string) (results []string, err error) {
 	}
 
 	if err := scanner.Err(); err != nil {
-		log.Warn("Can not process file: %s - %s", openFile, err)
+		log.WithFields(log.Fields{
+			"file":  openFile,
+			"Error": err,
+		}).Fatal("Can not process file")
 	}
 
-	log.Debug("Total lines found in %s: %d | Lines Parsed: %d\n", pathToFile, linesInFile, linesParsed)
+	log.WithFields(log.Fields{
+		"File Path":         pathToFile,
+		"Total Lines Found": linesInFile,
+		"Lines Parsed":      linesParsed,
+	}).Debug("File Parsing results")
 
 	return results, nil
 }
@@ -192,7 +210,10 @@ func parseFolder(folderPath string) (results []string, err error) {
 
 	files, err := ioutil.ReadDir(folderPath)
 	if err != nil {
-		log.Error("Can not process directory: %s - %s", folderPath, err)
+		log.WithFields(log.Fields{
+			"directory": folderPath,
+			"Error":     err,
+		}).Error("Can not process directory")
 	}
 
 	for _, file := range files {
@@ -222,12 +243,12 @@ type HTTPResponse struct {
 
 // DNSResponse -XXX
 type DNSResponse struct {
-	IpAddresses []string
+	IPAddresses []string
 	URL         string
 }
 
-func getUrlDNSResponse(URL string, resultChan chan DNSResponse, wg *sync.WaitGroup) {
-	result := DNSResponse{IpAddresses: []string{}, URL: URL}
+func getURLDNSResponse(URL string, resultChan chan DNSResponse, wg *sync.WaitGroup) {
+	result := DNSResponse{IPAddresses: []string{}, URL: URL}
 	u, err := url.Parse(URL)
 	if err != nil {
 		log.Errorf("Invalid URL: %s", err)
@@ -238,13 +259,13 @@ func getUrlDNSResponse(URL string, resultChan chan DNSResponse, wg *sync.WaitGro
 		log.Errorf("Error parsing URL: %s", err)
 	}
 	for _, ip := range ips {
-		result.IpAddresses = append(result.IpAddresses, ip.String())
+		result.IPAddresses = append(result.IPAddresses, ip.String())
 	}
 
 	resultChan <- result
 }
 
-func getUrlStatusCode(URL string, resultChan chan HTTPResponse, wg *sync.WaitGroup) {
+func getURLStatusCode(URL string, resultChan chan HTTPResponse, wg *sync.WaitGroup) {
 	result := HTTPResponse{statusCode: 0, URL: URL}
 	u, err := url.Parse(URL)
 	if err != nil {
@@ -284,7 +305,7 @@ func cleanupDeadDomains(domains []string) (result []HTTPResponse, err error) {
 		wg.Add(1)
 
 		go func(url string) {
-			getUrlStatusCode(url, resultChan, &wg)
+			getURLStatusCode(url, resultChan, &wg)
 			defer wg.Done()
 		}(url)
 
@@ -317,7 +338,7 @@ func cleanupDomainsNoDNS(domains []string) (result []DNSResponse, err error) {
 		wg.Add(1)
 
 		go func(url string) {
-			getUrlDNSResponse(url, resultChan, &wg)
+			getURLDNSResponse(url, resultChan, &wg)
 			defer wg.Done()
 		}(url)
 
@@ -328,7 +349,7 @@ func cleanupDomainsNoDNS(domains []string) (result []DNSResponse, err error) {
 
 	// resultChan = result
 	for r := range resultChan {
-		log.Infof("%s, %d", r.URL, r.IpAddresses)
+		log.Infof("%s, %d", r.URL, r.IPAddresses)
 	}
 
 	// result = []string{"test"}
@@ -344,9 +365,9 @@ func cleanupDomainsNoDNS(domains []string) (result []DNSResponse, err error) {
 //    Usage::
 //      >>> exportToFile(['advertising.microsoft.com', 'ad.doubleclick.net'], 'yaml', '/home/user/hosts')
 //
-func exportToFile(domains []string, format string, path string, ip_address string) (err error) {
-	if len(ip_address) == 0 {
-		ip_address = "0.0.0.0"
+func exportToFile(domains []string, format string, path string, ipAddress string) (err error) {
+	if len(ipAddress) == 0 {
+		ipAddress = "0.0.0.0"
 	}
 	return nil
 }
