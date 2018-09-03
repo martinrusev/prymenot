@@ -349,7 +349,7 @@ func cleanupDomainsNoDNS(domains []string) (result []DNSResponse, err error) {
 
 	// resultChan = result
 	for r := range resultChan {
-		log.Infof("%s, %d", r.URL, r.IPAddresses)
+		log.Infof("Url: %s, IPs: %v", r.URL, r.IPAddresses)
 	}
 
 	// result = []string{"test"}
@@ -381,7 +381,7 @@ func main() {
 	// hosts, _ := parseFile(absolutePathToFile)
 	hosts := []string{}
 
-	for i := 1; i <= 100; i++ {
+	for i := 1; i <= 500; i++ {
 		hosts = append(hosts, "google.com")
 		hosts = append(hosts, "example.org")
 		hosts = append(hosts, "golang.org")
