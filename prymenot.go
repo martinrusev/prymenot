@@ -347,12 +347,14 @@ func cleanupDomainsNoDNS(domains []string) (result []DNSResponse, err error) {
 	wg.Wait()
 	close(resultChan)
 
-	// resultChan = result
 	for r := range resultChan {
-		log.Infof("Url: %s, IPs: %v", r.URL, r.IPAddresses)
-	}
+		// DNS Record found
+		if len(r.IPAddresses) > 0 {
+			result = append(result, r)
+			log.Infof("Url: %s, IPs: %v", r.URL, r.IPAddresses)
+		}
 
-	// result = []string{"test"}
+	}
 
 	return result, nil
 }
@@ -381,18 +383,17 @@ func main() {
 	// hosts, _ := parseFile(absolutePathToFile)
 	hosts := []string{}
 
-	for i := 1; i <= 500; i++ {
+	for i := 1; i <= 2; i++ {
 		hosts = append(hosts, "google.com")
 		hosts = append(hosts, "example.org")
-		hosts = append(hosts, "golang.org")
-		hosts = append(hosts, "yahoo.com")
+		hosts = append(hosts, "something.xyx")
 	}
 	log.Info(len(hosts))
 	// result, _ := cleanupDeadDomains(hosts)
 
 	// Check DNS
 	dnsCheck, _ := cleanupDomainsNoDNS(hosts)
-	log.Debug(dnsCheck)
+	log.Debug(len(dnsCheck))
 
 	// log.Debug(result)
 	elapsed := time.Since(start)
